@@ -45,7 +45,11 @@ mod test {
 
             let template_path = rand_names::project_template_file_path();
             let _ = fs::create_dir(template_path.parent().as_ref().unwrap());
-            fs::write(&template_path, "This is a fake template file. {file}").unwrap();
+            fs::write(
+                &template_path,
+                "This is a fake template file. {file} {project}",
+            )
+            .unwrap();
 
             let project = project_path
                 .file_name()
@@ -54,7 +58,7 @@ mod test {
                 .unwrap()
                 .to_string();
             let args = Args {
-                arg_project: project,
+                arg_project: project.clone(),
                 cmd_new: true,
                 flag_p: Some(project_path.parent().unwrap().display().to_string()),
                 flag_template: Some(template_path.display().to_string()),
@@ -67,7 +71,11 @@ mod test {
             let new_contents = fs::read_to_string(&project_path).unwrap();
             assert_eq!(
                 new_contents,
-                format!("This is a fake template file. {}", project_path.display())
+                format!(
+                    "This is a fake template file. {} {}",
+                    project_path.display(),
+                    project
+                )
             );
 
             cleanup(&project_path);
