@@ -38,7 +38,18 @@ pub fn exec(args: Args) -> Result<(), String> {
         DEFAULT_TEMPLATE.to_string()
     };
 
-    let new_project = modified_template(&template, &project_paths.project_file, &args.arg_project);
+    let replacements = [
+        (
+            "{file}",
+            project_paths
+                .project_file
+                .to_str()
+                .expect("Couldn't convert the {:?} path into a String to write into the new file"),
+        ),
+        ("{project}", &args.arg_project),
+    ];
+
+    let new_project = modified_template(&template, &replacements);
     write_template(&new_project, &project_paths.project_file, args.flag_f)?;
 
     println!(
@@ -49,16 +60,14 @@ pub fn exec(args: Args) -> Result<(), String> {
     Ok(())
 }
 
-fn modified_template(template: &str, file: &PathBuf, project: &str) -> String {
+type Replacement<'a, 'b> = (&'a str, &'b str);
+
+fn modified_template(template: &str, replacements: &[Replacement]) -> String {
     let mut template = template.to_string();
 
-    template = template.replace(
-        "{file}",
-        file.to_str()
-            .expect("Couldn't convert the {:?} path into a String to write into the new file"),
-    );
-
-    template = template.replace("{project}", project);
+    for (placeholder, value) in replacements {
+        template = template.replace(placeholder, value);
+    }
 
     template
 }
@@ -95,30 +104,35 @@ mod test {
     use common::rand_names;
     use std::fs;
     use std::fs::File;
+    use std::path::Path;
 
     static DEFAULT_TEMPLATE: &str = "file: {file}\nproject: {project}";
 
-    #[test]
-    fn expect_muxed_project_text() {
-        let file = PathBuf::from("~/.muxed").join("superProject");
-        let value = modified_template(DEFAULT_TEMPLATE, &file, "superProject");
-
-        assert!(value.contains("file: ~/.muxed/superProject"));
-        assert!(value.contains("project: superProject"));
+    fn file_replacement(path: &Path) -> Replacement {
+        ("{file}", path.to_str().unwrap())
     }
 
     #[test]
-    fn expect_muxed_dir_text() {
+    fn expect_muxed_file_text() {
         let file = PathBuf::from("~/.muxed").join("superProject");
-        let value = modified_template(DEFAULT_TEMPLATE, &file, "");
-        let result = value.contains("~/.muxed/");
-        assert!(result);
+        let value = modified_template(DEFAULT_TEMPLATE, &[file_replacement(&file)]);
+
+        assert!(value.contains("file: ~/.muxed/superProject"));
+        assert!(value.contains("project: {project}"));
+    }
+
+    #[test]
+    fn expect_muxed_project_text() {
+        let value = modified_template(DEFAULT_TEMPLATE, &[("{project}", "superProject")]);
+
+        assert!(value.contains("project: superProject"));
     }
 
     #[test]
     fn expect_no_file_name_placeholder() {
         let file = PathBuf::from("~/.my_dir").join("superProject");
-        let value = modified_template(DEFAULT_TEMPLATE, &file, "");
+        let value = modified_template(DEFAULT_TEMPLATE, &[file_replacement(&file)]);
+
         let result = !value.contains("{file}");
         assert!(result);
     }
@@ -126,7 +140,8 @@ mod test {
     #[test]
     fn expect_project_name_with_dir() {
         let file = PathBuf::from("~/.my_dir").join("superProject.yml");
-        let value = modified_template(DEFAULT_TEMPLATE, &file, "");
+        let value = modified_template(DEFAULT_TEMPLATE, &[file_replacement(&file)]);
+
         let result = value.contains("file: ~/.my_dir/superProject.yml");
         assert!(result);
     }
@@ -134,7 +149,8 @@ mod test {
     #[test]
     fn expect_project_name_with_dir_and_trailing_slash() {
         let file = PathBuf::from("~/.my_dir/").join("superProject.yml");
-        let value = modified_template(DEFAULT_TEMPLATE, &file, "");
+        let value = modified_template(DEFAULT_TEMPLATE, &[file_replacement(&file)]);
+
         let result = value.contains("file: ~/.my_dir/superProject.yml");
         assert!(result);
     }
