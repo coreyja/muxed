@@ -32,8 +32,8 @@ pub fn exec(args: Args) -> Result<(), String> {
 
     check_first_run(&project_paths.project_directory)?;
 
-    let template = if let Some(template_path) = args.flag_template {
-        std::fs::read_to_string(template_path).map_err(|e| e.to_string())?
+    let template = if project_paths.template_file.exists() {
+        std::fs::read_to_string(project_paths.template_file).map_err(|e| e.to_string())?
     } else {
         DEFAULT_TEMPLATE.to_string()
     };
