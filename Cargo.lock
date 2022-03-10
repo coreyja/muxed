@@ -122,6 +122,7 @@ name = "common"
 version = "0.8.2"
 dependencies = [
  "dirs",
+ "libc",
  "rand",
  "serde",
 ]
@@ -261,7 +262,6 @@ version = "0.8.2"
 dependencies = [
  "common",
  "dirs",
- "libc",
  "rand",
  "snapshot",
  "yaml-rust",
